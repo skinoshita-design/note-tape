@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>ノートテープ | 音声文字起こし・要約</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #F5F1E6;
+    --paper-line: #E4DCC6;
+    --ink: #232120;
+    --ink-soft: #5B5650;
+    --indigo: #2B3A55;
+    --indigo-deep: #1B2740;
+    --highlight: #F2C14E;
+    --red-margin: #B4483A;
+    --green-ok: #4C6E4A;
+    --card: #FFFDF7;
+    --radius: 14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--paper);
+    background-image:
+      repeating-linear-gradient(var(--paper) 0px, var(--paper) 31px, var(--paper-line) 32px);
+    color: var(--ink);
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    min-height:100vh;
+    padding-bottom: 60px;
+  }
+  .margin-rule{
+    position: fixed;
+    top:0; bottom:0; left: 28px;
+    width: 1px;
+    background: rgba(180,72,58,0.35);
+    z-index:0;
+    display:none;
+  }
+  @media (min-width:600px){ .margin-rule{ display:block; } }
+
+  header{
+    padding: 28px 20px 18px;
+    max-width: 640px;
+    margin: 0 auto;
+    position: relative;
+    z-index:1;
+  }
+  .eyebrow{
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    color: var(--red-margin);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  h1{
+    font-family: 'Zen Old Mincho', serif;
+    font-weight: 700;
+    font-size: clamp(26px, 6vw, 34px);
+    margin: 0 0 6px;
+    color: var(--indigo-deep);
+    line-height: 1.3;
+  }
+  .lede{
+    color: var(--ink-soft);
+    font-size: 14px;
+    line-height: 1.7;
+    margin: 0;
+  }
+  .settings-btn{
+    position: absolute;
+    top: 28px; right: 20px;
+    width: 40px; height:40px;
+    border-radius: 50%;
+    border: 1px solid var(--paper-line);
+    background: var(--card);
+    cursor: pointer;
+    font-size: 18px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+  .settings-btn:hover{ background:#fff; }
+
+  main{
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 0 20px;
+    position: relative;
+    z-index:1;
+  }
+
+  .card{
+    background: var(--card);
+    border: 1px solid var(--paper-line);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 18px;
+    box-shadow: 0 2px 10px rgba(43,58,85,0.06);
+  }
+
+  label{
+    display:block;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--indigo-deep);
+    margin-bottom: 6px;
+    font-family: 'Space Mono', monospace;
+  }
+  .field-heading{
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--indigo-deep);
+    margin-bottom: 6px;
+    font-family: 'Space Mono', monospace;
+  }
+  .field{ margin-bottom: 16px; }
+  input[type="text"]{
+    width:100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1.5px solid var(--paper-line);
+    background: #fff;
+    font-size: 16px;
+    font-family: inherit;
+    color: var(--ink);
+  }
+  input[type="text"]:focus{ outline: 2px solid var(--indigo); outline-offset:1px; }
+
+  .file-drop{
+    display: block;
+    border: 1.5px dashed #C9BFA0;
+    border-radius: 10px;
+    padding: 18px 14px;
+    text-align:center;
+    background: #FDFBF4;
+    cursor:pointer;
+    transition: border-color .15s ease;
+  }
+  .file-drop:hover, .file-drop.dragover{ border-color: var(--indigo); }
+  .file-drop input{ display:none; }
+  .file-drop .icon{ font-size: 22px; margin-bottom:6px; }
+  .file-drop .fname{
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--indigo-deep);
+    font-weight: 700;
+    word-break: break-all;
+  }
+  .file-drop .hint{ font-size: 12px; color: var(--ink-soft); }
+
+  .run-btn{
+    width:100%;
+    padding: 15px;
+    border-radius: 10px;
+    border: none;
+    background: var(--indigo);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    transition: background .15s ease, transform .1s ease;
+  }
+  .run-btn:active{ transform: scale(0.99); }
+  .run-btn:disabled{ background:#B9BEC9; cursor:not-allowed; }
+  .run-btn:not(:disabled):hover{ background: var(--indigo-deep); }
+
+  .notice{
+    font-size: 12px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--paper-line);
+  }
+  .notice b{ color: var(--red-margin); }
+
+  .section-title{
+    font-family: 'Zen Old Mincho', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--indigo-deep);
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 12px;
+  }
+  .tag{
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    background: var(--highlight);
+    color: var(--indigo-deep);
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  .copy-btn{
+    border: 1px solid var(--paper-line);
+    background: #fff;
+    color: var(--indigo-deep);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 999px;
+    cursor:pointer;
+    font-family: 'Space Mono', monospace;
+    white-space: nowrap;
+  }
+  .copy-btn:hover{ background: var(--indigo); color:#fff; }
+  .copy-btn.copied{ background: var(--green-ok); color:#fff; border-color: var(--green-ok); }
+
+  .transcript-box{
+    white-space: pre-wrap;
+    line-height: 2;
+    font-size: 15px;
+    background-image: repeating-linear-gradient(var(--card) 0px, var(--card) 30px, #EFE9D8 31px);
+    padding: 4px 2px;
+  }
+
+  .summary-text{
+    font-size: 15px;
+    line-height: 1.8;
+    margin: 0 0 14px;
+    padding: 12px 14px;
+    background: #FBF3DE;
+    border-left: 3px solid var(--highlight);
+    border-radius: 6px;
+  }
+  ul.points{ margin:0; padding-left: 20px; }
+  ul.points li{ margin-bottom: 8px; line-height: 1.6; font-size: 15px; }
+
+  .status{
+    display:flex; align-items:center; gap:10px;
+    font-size: 14px;
+    color: var(--indigo-deep);
+    padding: 14px 4px;
+  }
+  .spinner{
+    width:18px; height:18px;
+    border: 2.5px solid var(--paper-line);
+    border-top-color: var(--indigo);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink:0;
+  }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  .error-box{
+    background: #FBEAE7;
+    border: 1px solid #E3B3AC;
+    color: #8A2E20;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+
+  .hidden{ display:none !important; }
+
+  /* modal */
+  .modal-backdrop{
+    position: fixed; inset:0;
+    background: rgba(27,39,64,0.55);
+    display:flex; align-items:center; justify-content:center;
+    padding: 20px;
+    z-index: 50;
+  }
+  .modal{
+    background: var(--card);
+    border-radius: var(--radius);
+    max-width: 420px;
+    width:100%;
+    padding: 24px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+  }
+  .modal h2{
+    font-family: 'Zen Old Mincho', serif;
+    font-size: 19px;
+    margin: 0 0 10px;
+    color: var(--indigo-deep);
+  }
+  .modal p{ font-size: 13px; color: var(--ink-soft); line-height:1.7; margin: 0 0 14px; }
+  .modal a{ color: var(--indigo); }
+  .modal .row{ display:flex; gap:8px; margin-top: 14px; }
+  .modal button{
+    padding: 11px 16px;
+    border-radius: 8px;
+    border:none;
+    font-family: inherit;
+    font-weight:700;
+    cursor:pointer;
+    font-size: 14px;
+  }
+  .modal .save{ background: var(--indigo); color:#fff; flex:1; }
+  .modal .save:hover{ background: var(--indigo-deep); }
+  .modal .cancel{ background: transparent; color: var(--ink-soft); border:1px solid var(--paper-line); }
+  .modal .clear{ background: transparent; color: var(--red-margin); border:1px solid #E3B3AC; font-size:12px; padding: 8px 12px; }
+
+  footer{
+    max-width: 640px;
+    margin: 20px auto 0;
+    padding: 0 20px;
+    font-size: 11px;
+    color: var(--ink-soft);
+    text-align:center;
+    position:relative; z-index:1;
+  }
+</style>
+</head>
+<body>
+<div class="margin-rule"></div>
+
+<header>
+  <button class="settings-btn" id="settingsBtn" title="APIキー設定" aria-label="APIキー設定">⚙️</button>
+  <div class="eyebrow">Lecture → Transcript → Summary</div>
+  <h1>ノートテープ</h1>
+  <p class="lede">講義や会話の音声ファイルを、文字起こしと要約にして手元に残す。保存も共有もしない、その場だけの道具です。</p>
+</header>
+
+<main>
+
+  <div class="card">
+    <div class="field">
+      <label for="lectureName">講義名・タイトル（任意）</label>
+      <input type="text" id="lectureName" placeholder="例：流行の社会学 第10回">
+    </div>
+
+    <div class="field">
+      <div class="field-heading">音声ファイル</div>
+      <label class="file-drop" id="fileDrop" for="audioInput">
+        <input type="file" id="audioInput">
+        <div class="icon">🎙️</div>
+        <div id="fileDropLabel">タップしてファイルを選択</div>
+        <div class="hint">30秒〜2分程度の短い音声を推奨（mp3 / wav / m4a など）</div>
+        <div class="fname" id="fileName"></div>
+      </label>
+    </div>
+
+    <button class="run-btn" id="runBtn" disabled>
+      <span id="runBtnText">実行する</span>
+    </button>
+
+    <div class="notice">
+      <b>取り扱い注意：</b>個人情報・機密情報を含む音声はアップロードしないでください。文字起こしと要約はこのページを離れると消え、どこにも保存されません。APIキーはお使いのブラウザ内にのみ保存され、Google の Gemini API に直接送信されます。
+    </div>
+  </div>
+
+  <div id="statusArea"></div>
+  <div id="errorArea"></div>
+
+  <div class="card hidden" id="transcriptCard">
+    <div class="section-title">
+      <span><span class="tag">STEP 1</span>文字起こし</span>
+      <button class="copy-btn" id="copyTranscript">コピー</button>
+    </div>
+    <div class="transcript-box" id="transcriptText"></div>
+  </div>
+
+  <div class="card hidden" id="summaryCard">
+    <div class="section-title">
+      <span><span class="tag">STEP 2</span>要約</span>
+      <button class="copy-btn" id="copySummary">コピー</button>
+    </div>
+    <p class="summary-text" id="summaryText"></p>
+    <label style="margin-bottom:8px;">要点</label>
+    <ul class="points" id="pointsList"></ul>
+  </div>
+
+</main>
+
+<footer>Gemini API を利用しています。生成内容は誤りを含む場合があるため、重要な用途では必ず音声原本と照らし合わせてください。</footer>
+
+<div class="modal-backdrop hidden" id="modalBackdrop">
+  <div class="modal">
+    <h2>Gemini APIキーを入力</h2>
+    <p>
+      このアプリを動かすには、あなた自身の Gemini APIキーが必要です。キーはこの端末のブラウザ内（localStorage）にのみ保存され、サーバーには送信されません。<br>
+      キーは <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> で無料発行できます。
+    </p>
+    <input type="text" id="apiKeyInput" placeholder="AIza..." autocomplete="off" spellcheck="false">
+    <div class="row">
+      <button class="cancel" id="modalCancel">あとで</button>
+      <button class="save" id="modalSave">保存する</button>
+    </div>
+    <div style="margin-top:12px; text-align:center;">
+      <button class="clear hidden" id="modalClear">保存済みのキーを削除</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'notetape_gemini_api_key';
+const MODEL = 'gemini-3.5-flash';
+
+const els = {
+  settingsBtn: document.getElementById('settingsBtn'),
+  modalBackdrop: document.getElementById('modalBackdrop'),
+  apiKeyInput: document.getElementById('apiKeyInput'),
+  modalSave: document.getElementById('modalSave'),
+  modalCancel: document.getElementById('modalCancel'),
+  modalClear: document.getElementById('modalClear'),
+  fileDrop: document.getElementById('fileDrop'),
+  audioInput: document.getElementById('audioInput'),
+  fileName: document.getElementById('fileName'),
+  fileDropLabel: document.getElementById('fileDropLabel'),
+  runBtn: document.getElementById('runBtn'),
+  runBtnText: document.getElementById('runBtnText'),
+  lectureName: document.getElementById('lectureName'),
+  statusArea: document.getElementById('statusArea'),
+  errorArea: document.getElementById('errorArea'),
+  transcriptCard: document.getElementById('transcriptCard'),
+  transcriptText: document.getElementById('transcriptText'),
+  copyTranscript: document.getElementById('copyTranscript'),
+  summaryCard: document.getElementById('summaryCard'),
+  summaryText: document.getElementById('summaryText'),
+  pointsList: document.getElementById('pointsList'),
+  copySummary: document.getElementById('copySummary'),
+};
+
+let selectedFile = null;
+
+// ---------- API key handling ----------
+function getApiKey(){ return localStorage.getItem(STORAGE_KEY) || ''; }
+function setApiKey(k){ localStorage.setItem(STORAGE_KEY, k); }
+function clearApiKey(){ localStorage.removeItem(STORAGE_KEY); }
+
+function openModal(){
+  els.apiKeyInput.value = getApiKey();
+  els.modalClear.classList.toggle('hidden', !getApiKey());
+  els.modalBackdrop.classList.remove('hidden');
+}
+function closeModal(){ els.modalBackdrop.classList.add('hidden'); }
+
+els.settingsBtn.addEventListener('click', openModal);
+els.modalCancel.addEventListener('click', closeModal);
+els.modalBackdrop.addEventListener('click', (e)=>{ if(e.target===els.modalBackdrop) closeModal(); });
+els.modalSave.addEventListener('click', ()=>{
+  const v = els.apiKeyInput.value.trim();
+  if(v){ setApiKey(v); }
+  closeModal();
+});
+els.modalClear.addEventListener('click', ()=>{
+  clearApiKey();
+  els.apiKeyInput.value = '';
+  els.modalClear.classList.add('hidden');
+});
+
+// first-visit prompt
+window.addEventListener('DOMContentLoaded', ()=>{
+  if(!getApiKey()) openModal();
+});
+
+// ---------- File selection ----------
+// fileDrop is now a native <label for="audioInput">, so tapping it already
+// opens the picker natively (more reliable on iOS Safari than a JS-triggered
+// input.click()). We just listen for the resulting selection.
+function handleFileSelected(){
+  const f = els.audioInput.files && els.audioInput.files[0];
+  if(f){
+    selectedFile = f;
+    els.fileName.textContent = `選択中：${f.name}（${(f.size/1024/1024).toFixed(1)}MB）`;
+    els.fileDropLabel.textContent = 'ファイルを変更する';
+    els.runBtn.disabled = false;
+    clearError();
+    const looksAudio = /^audio\//.test(f.type) || /\.(mp3|wav|m4a|aac|ogg|flac|aiff|mp4)$/i.test(f.name);
+    if(!looksAudio && f.type){
+      showError('選択されたファイルが音声形式でない可能性があります。音声ファイルを選んでいるか確認してください（このまま実行することもできます）。');
+    }
+  }
+}
+els.audioInput.addEventListener('change', handleFileSelected);
+els.audioInput.addEventListener('input', handleFileSelected);
+['dragover','dragleave','drop'].forEach(evt=>{
+  els.fileDrop.addEventListener(evt, (e)=>{
+    e.preventDefault();
+    els.fileDrop.classList.toggle('dragover', evt==='dragover');
+    if(evt==='drop' && e.dataTransfer.files[0]){
+      els.audioInput.files = e.dataTransfer.files;
+      els.audioInput.dispatchEvent(new Event('change'));
+    }
+  });
+});
+
+// ---------- Helpers ----------
+function fileToBase64(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=> resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function showStatus(text){
+  els.statusArea.innerHTML = `<div class="status"><div class="spinner"></div><span>${text}</span></div>`;
+}
+function clearStatus(){ els.statusArea.innerHTML = ''; }
+function showError(text){
+  els.errorArea.innerHTML = `<div class="error-box">${text}</div>`;
+}
+function clearError(){ els.errorArea.innerHTML = ''; }
+
+async function callGemini(apiKey, parts, jsonSchema){
+  const body = {
+    contents: [{ role: 'user', parts }],
+  };
+  if(jsonSchema){
+    body.generationConfig = {
+      responseMimeType: 'application/json',
+      responseSchema: jsonSchema
+    };
+  }
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey
+    },
+    body: JSON.stringify(body)
+  });
+
+  if(!res.ok){
+    let msg = `APIエラー（HTTP ${res.status}）`;
+    try{
+      const errJson = await res.json();
+      if(errJson?.error?.message) msg += `：${errJson.error.message}`;
+    }catch(e){}
+    throw new Error(msg);
+  }
+
+  const data = await res.json();
+  const cand = data?.candidates?.[0];
+  if(!cand){
+    throw new Error('APIから有効な応答が得られませんでした。');
+  }
+  if(cand.finishReason && cand.finishReason !== 'STOP'){
+    throw new Error(`生成が正常に完了しませんでした（理由：${cand.finishReason}）。音声を短くして再試行してください。`);
+  }
+  const text = cand?.content?.parts?.map(p=>p.text||'').join('') || '';
+  return text;
+}
+
+function copyText(text, btn){
+  navigator.clipboard.writeText(text).then(()=>{
+    const orig = btn.textContent;
+    btn.textContent = 'コピーしました';
+    btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent = orig; btn.classList.remove('copied'); }, 1600);
+  }).catch(()=>{
+    showError('コピーに失敗しました。手動で選択してコピーしてください。');
+  });
+}
+
+els.copyTranscript.addEventListener('click', ()=> copyText(els.transcriptText.textContent, els.copyTranscript));
+els.copySummary.addEventListener('click', ()=>{
+  const points = Array.from(els.pointsList.children).map(li=>`・${li.textContent}`).join('\n');
+  const text = `【要約】\n${els.summaryText.textContent}\n\n【要点】\n${points}`;
+  copyText(text, els.copySummary);
+});
+
+// ---------- Main flow ----------
+els.runBtn.addEventListener('click', async ()=>{
+  clearError();
+  const apiKey = getApiKey();
+  if(!apiKey){ openModal(); return; }
+  if(!selectedFile){ showError('音声ファイルを選択してください。'); return; }
+
+  els.runBtn.disabled = true;
+  els.transcriptCard.classList.add('hidden');
+  els.summaryCard.classList.add('hidden');
+
+  const lecture = els.lectureName.value.trim();
+
+  try{
+    showStatus('音声を読み込んでいます…');
+    const base64Audio = await fileToBase64(selectedFile);
+    const mimeType = selectedFile.type || 'audio/mpeg';
+
+    showStatus('文字起こしを作成しています…（音声の長さにより数十秒かかります）');
+    const transcriptPrompt = lecture
+      ? `これは「${lecture}」という講義・会話の音声です。この音声を一字一句忠実に日本語で文字起こししてください。フィラーや言い淀みも自然な範囲で構いません。文字起こし本文のみを出力し、前置きや見出しは付けないでください。`
+      : `次の音声を一字一句忠実に日本語で文字起こししてください。フィラーや言い淀みも自然な範囲で構いません。文字起こし本文のみを出力し、前置きや見出しは付けないでください。`;
+
+    const transcript = await callGemini(apiKey, [
+      { text: transcriptPrompt },
+      { inline_data: { mime_type: mimeType, data: base64Audio } }
+    ]);
+
+    if(!transcript.trim()){
+      throw new Error('文字起こし結果が空でした。音声が無音でないか、対応形式かご確認ください。');
+    }
+
+    els.transcriptText.textContent = transcript.trim();
+    els.transcriptCard.classList.remove('hidden');
+
+    showStatus('要約と要点を作成しています…');
+    const summarySchema = {
+      type: 'object',
+      properties: {
+        summary: { type: 'string', description: '150〜250字程度の日本語の要約' },
+        key_points: {
+          type: 'array',
+          items: { type: 'string' },
+          description: '重要な要点。3〜5個'
+        }
+      },
+      required: ['summary', 'key_points']
+    };
+    const summaryPrompt = `以下は${lecture ? `「${lecture}」の` : ''}音声の文字起こしです。この内容を読み、150〜250字程度の日本語の要約（summary）と、重要な要点を3〜5個の箇条書き（key_points）で抽出してください。\n\n---\n${transcript}\n---`;
+
+    const summaryRaw = await callGemini(apiKey, [{ text: summaryPrompt }], summarySchema);
+    let summaryObj;
+    try{
+      summaryObj = JSON.parse(summaryRaw);
+    }catch(e){
+      throw new Error('要約結果の解析に失敗しました。もう一度実行してください。');
+    }
+
+    els.summaryText.textContent = summaryObj.summary || '';
+    els.pointsList.innerHTML = '';
+    (summaryObj.key_points || []).forEach(pt=>{
+      const li = document.createElement('li');
+      li.textContent = pt;
+      els.pointsList.appendChild(li);
+    });
+    els.summaryCard.classList.remove('hidden');
+
+    clearStatus();
+  }catch(err){
+    clearStatus();
+    showError(err.message || '予期しないエラーが発生しました。');
+  }finally{
+    els.runBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
